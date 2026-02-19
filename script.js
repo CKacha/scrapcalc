@@ -1,0 +1,1 @@
+hours x φ x 10 x tier_multiplier
