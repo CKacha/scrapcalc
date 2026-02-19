@@ -1,0 +1,2 @@
+hours x φ x 10 x tier_multiplier
+φ is golden ratio, wonder if theres smth for that 
