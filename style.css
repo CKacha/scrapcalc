@@ -1,0 +1,219 @@
+:root{
+  --paper:#f6f1e3;
+  --paper2:#efe6cf;
+  --ink:#1a1a1a;
+  --muted:#4b4b4b;
+  --line:rgba(0,0,0,0.18);
+  --line2:rgba(0,0,0,0.10);
+  --accent:#ff6a00;
+  --accent2:#0b6efd;
+  --card:#fffaf0;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  color:var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background:
+    radial-gradient(900px 600px at 18% 8%, rgba(255,106,0,0.12), transparent 60%),
+    radial-gradient(900px 600px at 85% 25%, rgba(11,110,253,0.10), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.03), rgba(0,0,0,0.03) 1px, transparent 1px, transparent 12px),
+    linear-gradient(180deg, var(--paper), var(--paper2));
+}
+
+.wrap{
+  width:min(980px, 92vw);
+  margin:28px auto 44px;
+  display:grid;
+  gap:14px;
+}
+
+.header{
+  padding: 6px 4px 2px;
+}
+.badge{
+  display:inline-block;
+  padding:6px 10px;
+  border:2px solid var(--ink);
+  border-radius: 10px;
+  font-weight:800;
+  letter-spacing:1px;
+  background: rgba(255,255,255,0.55);
+  transform: rotate(-1deg);
+}
+.header h1{
+  margin:10px 0 6px;
+  font-size: 30px;
+  letter-spacing: -0.3px;
+}
+.sub{
+  margin:0;
+  color:var(--muted);
+  line-height:1.35;
+}
+
+.card{
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 3px 4px 0 rgba(0,0,0,0.10);
+  position: relative;
+}
+
+.card h2{
+  margin:0 0 12px;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.tape::before,
+.tape::after{
+  content:"";
+  position:absolute;
+  width: 120px;
+  height: 26px;
+  background: rgba(255,240,160,0.65);
+  border: 1px solid rgba(0,0,0,0.12);
+  top: -12px;
+  box-shadow: 1px 2px 0 rgba(0,0,0,0.06);
+}
+.tape::before{
+  left: 22px;
+  transform: rotate(-4deg);
+}
+.tape::after{
+  right: 22px;
+  transform: rotate(3deg);
+}
+
+.cardHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom: 10px;
+}
+.cardHead h2{ margin:0; }
+
+.grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field{
+  display:grid;
+  gap:6px;
+}
+.field span{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.field input{
+  width:100%;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 2px solid var(--ink);
+  background: rgba(255,255,255,0.85);
+  outline: none;
+  font-size: 14px;
+}
+.field input:focus{
+  box-shadow: 0 0 0 3px rgba(255,106,0,0.22);
+}
+
+.row{
+  display:flex;
+  gap:10px;
+  margin-top: 14px;
+}
+
+button{
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 800;
+  background: rgba(255,255,255,0.70);
+}
+button:hover{
+  transform: translateY(-1px);
+}
+button:active{
+  transform: translateY(0px);
+}
+
+.primary{
+  background: rgba(255,106,0,0.20);
+}
+.ghost{
+  background: rgba(255,255,255,0.50);
+}
+
+.toggle{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.55);
+  font-weight: 800;
+}
+.pill{
+  display:inline-block;
+  min-width: 42px;
+  text-align:center;
+  padding: 3px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.85);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+.pill.on{
+  background: rgba(255,106,0,0.22);
+}
+
+.hint{
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+}
+
+.result{
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px dashed var(--ink);
+  background: rgba(255,255,255,0.65);
+  line-height: 1.45;
+}
+
+.big{
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.mono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.footer{
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 0 4px;
+}
+
+@media (max-width: 740px){
+  .grid{ grid-template-columns: 1fr; }
+  .cardHead{ flex-direction: column; align-items:flex-start; }
+}

@@ -1,2 +1,21 @@
 hours x φ x 10 x tier_multiplier
 φ is golden ratio, wonder if theres smth for that 
+
+where the hell is phi used tho 
+
+Price per roll:
+
+Default roll chance:
+
+Price per upgrade:
+
+Upgrade chance increase:
+
+Calculate
+Optimal strategy --> Upgrades: x, Rolls: y
+
+Total cost: () | Chance per roll: ()% | Total chance: ()%
+
+Hours: (T1), (T2), (T3), (T4)
+
+IF I HAD ACCESS TO THE AIRTABLE I COULDVE MADE THIS BETTER 
