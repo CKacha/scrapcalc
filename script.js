@@ -1,7 +1,7 @@
-const GATE_KEY = "scraps_gate_decision"; 
+const GATE_KEY = "scraps_gate_decision";
 let alreadyWon = false;
 
-let warmupEnabled = false;
+let warmupOpen = false;
 let warmRolls = 0;
 let warmScraps = 0;
 let warmSpinning = false;
@@ -33,10 +33,8 @@ function format2(n){
 function showModal({ title, body, buttons }){
   $("modalTitle").textContent = title;
   $("modalBody").innerHTML = body;
-
   const btnWrap = $("modalBtns");
   btnWrap.innerHTML = "";
-
   for (const b of buttons){
     const btn = document.createElement("button");
     btn.type = "button";
@@ -48,13 +46,10 @@ function showModal({ title, body, buttons }){
     });
     btnWrap.appendChild(btn);
   }
-
   $("modal").classList.remove("hidden");
 }
 
-function hideModal(){
-  $("modal").classList.add("hidden");
-}
+function hideModal(){ $("modal").classList.add("hidden"); }
 
 function setAlreadyWonUI(){
   const pill = $("alreadyWonState");
@@ -88,14 +83,10 @@ function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc 
   for (let k = 0; k <= maxUsefulUpgrades; k++){
     const perRollPct = clampInt(baseChancePct + k * upgradeInc, 0, 100);
     const p = pctIntToProb(perRollPct);
-
     const er = expectedRolls(p);
     if (!Number.isFinite(er)) continue;
-
     const expectedScraps = k * upgradeCost + rollCost * er;
-
     const cand = { upgrades:k, perRollPct, expectedRollsReal:er, expectedScrapsReal:expectedScraps };
-
     if (!best) best = cand;
     else if (cand.expectedScrapsReal < best.expectedScrapsReal) best = cand;
     else if (cand.expectedScrapsReal === best.expectedScrapsReal && cand.upgrades < best.upgrades) best = cand;
@@ -115,10 +106,7 @@ function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc 
     { tier:"T4", rate:25 }
   ];
 
-  const hoursByTier = tierRates.map(t => ({
-    tier: t.tier,
-    hours: best.expectedScrapsReal / t.rate
-  }));
+  const hoursByTier = tierRates.map(t => ({ tier: t.tier, hours: best.expectedScrapsReal / t.rate }));
 
   return {
     ok:true,
@@ -180,7 +168,6 @@ function renderMain(res){
 
   box.innerHTML = `
     <div class="big">${res.recommendation}</div>
-
     <div class="split">
       <div class="miniBox">
         <div class="miniTitle">Odds + Expected Cost</div>
@@ -189,7 +176,6 @@ function renderMain(res){
         <div class="mono" style="margin-top:6px">expected scraps: ${format2(res.expectedScraps)}</div>
         ${penaltyNote}
       </div>
-
       <div class="miniBox">
         <div class="miniTitle">Hours needed (scraps/hour)</div>
         <div class="tierList">${tierRows}</div>
@@ -197,22 +183,6 @@ function renderMain(res){
     </div>
   `;
 }
-
-
-function buildCaseStrip(count){
-  const strip = $("caseStrip");
-  strip.innerHTML = "";
-  for (let i = 0; i < count; i++){
-    const n = (i % 100) + 1; 
-    const el = document.createElement("div");
-    el.className = "caseNum";
-    el.textContent = String(n);
-    el.dataset.num = String(n);
-    strip.appendChild(el);
-  }
-}
-
-function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
 
 function setWarmStats(){
   $("warmRolls").textContent = String(warmRolls);
@@ -227,29 +197,65 @@ function warmReset(){
   $("caseStrip").style.transform = `translateX(0px)`;
 }
 
-function warmupReveal(){
-  $("warmupArea").classList.remove("hidden");
-  warmupEnabled = true;
-
-  buildCaseStrip(600);
+function buildCaseStrip(count){
+  const strip = $("caseStrip");
+  strip.innerHTML = "";
+  for (let i = 0; i < count; i++){
+    const n = (i % 100) + 1;
+    const el = document.createElement("div");
+    el.className = "caseNum";
+    el.textContent = String(n);
+    el.dataset.num = String(n);
+    strip.appendChild(el);
+  }
 }
 
-function startWarmup(){
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+function getCurrentTranslateX(el){
+  const tr = window.getComputedStyle(el).transform;
+  if (!tr || tr === "none") return 0;
+  const m = tr.match(/matrix\(([^)]+)\)/);
+  if (!m) return 0;
+  const parts = m[1].split(",").map(s => Number(s.trim()));
+  return parts.length >= 6 ? parts[4] : 0;
+}
+
+function openWarmup(){
+  if (warmupOpen) return;
+  warmupOpen = true;
+  $("warmupArea").classList.add("open");
+  buildCaseStrip(900);
+}
+
+function startWarmupFlow(){
   showModal({
-    title: "warmup time?",
-    body: "wanna try some warmup gambeling?",
+    title: "warmup gambeling?",
+    body: "you sure you wanna do the warmup thing?",
     buttons: [
-      { label: "yes", primary: true, onClick: () => warmupReveal() },
-      { label: "no", onClick: () => showModal({ title: "oh welp :P", body: "ok then. responsible arc.", buttons: [{ label: "lol", primary: true }] }) }
+      { label: "yes", primary: true, onClick: () => openWarmup() },
+      { label: "no", onClick: () => showModal({ title: "oh welp :P", body: "ok then.", buttons: [{ label: "lol", primary: true }] }) }
     ]
   });
 }
 
+function getStepMetrics(){
+  const strip = $("caseStrip");
+  const first = strip.querySelector(".caseNum");
+  if (!first) return { tileW: 64, gap: 10, pad: 12 };
+  const tileW = first.getBoundingClientRect().width || 64;
+  const gap = 10;
+  const pad = 12;
+  return { tileW, gap, pad };
+}
+
 async function spinCase(){
+  if (!warmupOpen) openWarmup();
   if (warmSpinning) return;
 
   const chanceRaw = toNum($("warmChance").value);
   const costRaw = toNum($("warmCost").value);
+
   if (!Number.isFinite(chanceRaw) || !Number.isFinite(costRaw)){
     showModal({
       title: "missing numbers",
@@ -270,34 +276,30 @@ async function spinCase(){
 
   const strip = $("caseStrip");
   const tiles = Array.from(strip.children);
-  if (tiles.length < 200){
-    buildCaseStrip(600);
-  }
+  if (tiles.length < 300) buildCaseStrip(900);
 
-  const targetIndexBase = 480; 
+  const base = 720;
   let targetIndex = -1;
-  for (let i = targetIndexBase; i < tiles.length; i++){
+  for (let i = base; i < tiles.length; i++){
     if (Number(tiles[i].dataset.num) === finalNumber){
       targetIndex = i;
       break;
     }
   }
-  if (targetIndex === -1) targetIndex = targetIndexBase;
+  if (targetIndex === -1) targetIndex = base;
 
-  const windowEl = strip.parentElement;
+  const windowEl = $("caseStrip").parentElement;
   const windowRect = windowEl.getBoundingClientRect();
   const pointerX = windowRect.width / 2;
 
-  const tileRect = tiles[0].getBoundingClientRect();
-  const tileW = tileRect.width;
-  const gap = 10; 
+  const { tileW, gap, pad } = getStepMetrics();
   const step = tileW + gap;
 
-  const tileCenterX = (targetIndex * step) + (tileW / 2) + 12; 
+  const tileCenterX = (targetIndex * step) + (tileW / 2) + pad;
   const targetTranslate = pointerX - tileCenterX;
 
   const start = performance.now();
-  const duration = 2400 + Math.random() * 900; 
+  const duration = 2400 + Math.random() * 900;
   const startX = getCurrentTranslateX(strip);
 
   warmSpinning = true;
@@ -337,17 +339,6 @@ async function spinCase(){
   }
 }
 
-function getCurrentTranslateX(el){
-  const st = window.getComputedStyle(el);
-  const tr = st.transform;
-  if (!tr || tr === "none") return 0;
-  const m = tr.match(/matrix\(([^)]+)\)/);
-  if (!m) return 0;
-  const parts = m[1].split(",").map(s => Number(s.trim()));
-  return parts.length >= 6 ? parts[4] : 0;
-}
-
-
 function showGate(){
   $("gate").classList.add("show");
   $("nuh").classList.remove("show");
@@ -364,20 +355,12 @@ function showNuh(){
   $("gate").classList.remove("show");
   $("app").style.display = "none";
   $("nuh").classList.add("show");
-  const v = $("lollVideo");
-  if (v) v.play().catch(() => {});
 }
 
 function initGate(){
   const decision = localStorage.getItem(GATE_KEY);
-  if (decision === "yes"){
-    openApp();
-    return;
-  }
-  if (decision === "no"){
-    showNuh();
-    return;
-  }
+  if (decision === "yes"){ openApp(); return; }
+  if (decision === "no"){ showNuh(); return; }
   showGate();
 }
 
@@ -385,7 +368,7 @@ function resetAll(){
   clearInputs();
   alreadyWon = false;
   setAlreadyWonUI();
-  renderMain({ ok:false, error:"put numbers in → hit Calculate." });
+  $("result").innerHTML = `put numbers in → hit <b>Calculate</b>.`;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -405,14 +388,10 @@ document.addEventListener("DOMContentLoaded", () => {
     setAlreadyWonUI();
   });
 
-  $("calcBtn").addEventListener("click", () => {
-    const res = solveMain();
-    renderMain(res);
-  });
-
+  $("calcBtn").addEventListener("click", () => renderMain(solveMain()));
   $("resetBtn").addEventListener("click", () => resetAll());
 
-  $("warmupBtn").addEventListener("click", () => startWarmup());
+  $("warmupBtn").addEventListener("click", () => startWarmupFlow());
   $("warmRollBtn").addEventListener("click", () => spinCase());
   $("warmResetBtn").addEventListener("click", () => {
     $("warmChance").value = "";

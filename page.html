@@ -3,35 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Scraps — Cheapest Method</title>
+  <title>Scraps Item Calculator</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
   <div id="gate" class="gate">
     <div class="gateCard">
       <div class="stamp">heads up</div>
-      <h1 class="gateTitle">quick warning:</h1>
+      <h1 class="gateTitle"> quick warning</h1>
       <p class="gateText">
         this calculator may be inaccurate sometimes.<br/>
-        I 100% do <b>not</b> encourage gambling.<br/>
-        use your brain. be chill.
+        100% <b>don't</b> gamble irrisponsibly<br/>
+        use your brain! be chill :D
       </p>
-
       <div class="gateBtns">
         <button id="gateYes" class="btn primary" type="button">yuh uh</button>
         <button id="gateNo" class="btn" type="button">nuh uh</button>
       </div>
-
-      <p class="tiny">decision is saved locally (cache/localStorage).</p>
+      <p class="tiny">decision is saved locally (via cache/localStorage).</p>
     </div>
   </div>
 
   <div id="nuh" class="nuh">
-    <video id="lollVideo" class="nuhVideo" autoplay muted loop playsinline>
-      <source src="loll.mp4" type="video/mp4">
-    </video>
+    <div class="nuhInner">
+      <img class="nuhGif" src="loll.gif" alt="loll gif">
+      <div class="nuhText">welp dont gamble then</div>
+    </div>
   </div>
 
   <main id="app" class="wrap">
@@ -40,21 +38,20 @@
 
       <div class="postits">
         <div class="postit a">made by @Iamalive</div>
-        <div class="postit b">totally not gambling</div>
+        <div class="postit b">(this is totally not gambling)</div>
       </div>
 
-      <h1>Cheapest Method Calculator</h1>
+      <h1>Cheapest way calc:</h1>
       <p class="sub">
         Input item roll cost + base chance, refinery upgrade cost + boost.
         Finds the cheapest strategy (<b>minimum expected scraps</b>).
-        “Already won?” halves your base chance.
+        If ya won click the button indicating so, then you'll get a more accurate chance for that scenario
       </p>
     </header>
 
     <section class="card tape">
       <div class="cardHead">
         <h2>Inputs</h2>
-
         <button id="alreadyWonBtn" class="btn toggle" type="button" aria-pressed="false">
           Already won? <span id="alreadyWonState" class="pill">NO</span>
         </button>
@@ -77,7 +74,7 @@
         </label>
 
         <label class="field">
-          <span>Chance increase per upgrade (%)</span>
+          <span>Chance increase per refinery upgrade (%)</span>
           <input id="upgradeInc" type="number" min="0" step="1" placeholder="e.g. 5" />
         </label>
       </div>
@@ -88,26 +85,28 @@
       </div>
 
       <p class="hint">
-        Tier rates are <b>scraps/hour</b>: T1=12, T2=16, T3=20, T4=25.
-        Expected rolls are shown as decimals (not rounded btw).
+        Tier rates are <b>scraps/hour</b>: T1 = 12, T2 = 16, T3 = 20, T4 = 25.
+        Expected rolls are shown as decimals (not rounded bc i dont want to be in boolean pain).
       </p>
     </section>
 
     <section class="card">
       <h2>Result</h2>
       <div id="result" class="result">
-        put numbers in → hit <b>Calculate</b>.
+        put numbers in → hit <b>Calculate!</b>.
       </div>
     </section>
 
-    <section class="card">
-      <h2>Warmup</h2>
-      <button id="warmupBtn" class="btn wide" type="button">wanna try some warmup gambling?</button>
+    <section class="card warmCard">
+      <div class="warmHead">
+        <h2>Warmup</h2>
+        <button id="warmupBtn" class="btn wide" type="button">wanna try some warmup gambeling?</button>
+      </div>
 
-      <div id="warmupArea" class="warmupArea hidden">
+      <div id="warmupArea" class="warmupArea">
         <div class="warmupTop">
           <div class="scrapTag">warmup zone</div>
-          <div class="warmupNote">numbers 1–100 will spin and slow down. win if the final number ≤ your chance.</div>
+          <div class="warmupNote">win if final number ≤ your chance</div>
         </div>
 
         <div class="grid">
@@ -127,22 +126,23 @@
           <button id="warmResetBtn" class="btn" type="button">reset warmup</button>
         </div>
 
+        <div class="warmStats">
+          <div class="stat"><span class="k">rolls</span><span id="warmRolls" class="v">0</span></div>
+          <div class="stat"><span class="k">scraps</span><span id="warmScraps" class="v">0</span></div>
+          <div class="stat"><span class="k">last</span><span id="warmLast" class="v">—</span></div>
+        </div>
+
         <div class="case">
           <div class="caseWindow">
             <div class="casePointer"></div>
-            <div id="caseStrip" class="caseStrip" aria-label="roulette numbers"></div>
-          </div>
-          <div class="caseStats">
-            <div class="stat"><span class="k">rolls</span><span id="warmRolls" class="v">0</span></div>
-            <div class="stat"><span class="k">scraps</span><span id="warmScraps" class="v">0</span></div>
-            <div class="stat"><span class="k">last</span><span id="warmLast" class="v">—</span></div>
+            <div id="caseStrip" class="caseStrip"></div>
           </div>
         </div>
       </div>
     </section>
 
     <footer class="footer">
-      <p>tried my best to copy scraps ui, uh does it look good lmao</p>
+      <p>tried my best to replicate the scraps ui, uhhh does it look similar?</p>
     </footer>
   </main>
 
