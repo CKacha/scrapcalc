@@ -12,3 +12,6 @@ Copy the repository and
 python -m http.server 8000
 
 http://localhost:8000/page.html
+
+localStorage.removeItem("scraps_gate_decision")
+location.reload()
