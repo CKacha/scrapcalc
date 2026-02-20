@@ -3,25 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Scraps — Cheapest Method</title>
+  <title>Calculate da scrapa</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="wrap">
     <header class="header">
       <div class="badge">SCRAPS</div>
-      <h1>Cheapest Method Calculator</h1>
+      <h1>Best scrap method calc</h1>
       <p class="sub">
         Put in the store roll cost + base chance, and the refinery upgrade cost + boost.
         We’ll tell you the cheapest way (in expected scraps) to get the item.
       </p>
     </header>
 
-    <section class="card tape">
+     <section class="card tape">
       <div class="cardHead">
         <h2>Inputs</h2>
 
-        <button id="alreadyWonBtn" class="toggle" aria-pressed="false" title="If you already won this item before, base chance gets halved.">
+        <button
+          id="alreadyWonBtn"
+          class="toggle"
+          type="button"
+          aria-pressed="false"
+          title="If you already won this item before, base chance gets halved."
+        >
           Already won? <span class="pill" id="alreadyWonState">NO</span>
         </button>
       </div>
@@ -49,8 +55,8 @@
       </div>
 
       <div class="row">
-        <button id="calcBtn" class="primary">Calculate</button>
-        <button id="resetBtn" class="ghost">Reset</button>
+        <button id="calcBtn" class="primary" type="button">Calculate</button>
+        <button id="resetBtn" class="ghost" type="button">Reset</button>
       </div>
 
       <p class="hint">

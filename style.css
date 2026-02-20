@@ -4,9 +4,7 @@
   --ink:#1a1a1a;
   --muted:#4b4b4b;
   --line:rgba(0,0,0,0.18);
-  --line2:rgba(0,0,0,0.10);
   --accent:#ff6a00;
-  --accent2:#0b6efd;
   --card:#fffaf0;
 }
 
@@ -80,6 +78,9 @@ body{
   border: 1px solid rgba(0,0,0,0.12);
   top: -12px;
   box-shadow: 1px 2px 0 rgba(0,0,0,0.06);
+
+  /* IMPORTANT: don't let the decorative tape steal clicks */
+  pointer-events: none;
 }
 .tape::before{
   left: 22px;
@@ -141,19 +142,11 @@ button{
   font-weight: 800;
   background: rgba(255,255,255,0.70);
 }
-button:hover{
-  transform: translateY(-1px);
-}
-button:active{
-  transform: translateY(0px);
-}
+button:hover{ transform: translateY(-1px); }
+button:active{ transform: translateY(0px); }
 
-.primary{
-  background: rgba(255,106,0,0.20);
-}
-.ghost{
-  background: rgba(255,255,255,0.50);
-}
+.primary{ background: rgba(255,106,0,0.20); }
+.ghost{ background: rgba(255,255,255,0.50); }
 
 .toggle{
   display:flex;
