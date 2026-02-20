@@ -1,40 +1,83 @@
+const GATE_KEY = "scraps_gate_decision"; 
 let alreadyWon = false;
 
-function clampInt(n, lo, hi) {
+let warmupEnabled = false;
+let warmRolls = 0;
+let warmScraps = 0;
+let warmSpinning = false;
+
+function $(id){ return document.getElementById(id); }
+
+function clampInt(n, lo, hi){
   n = Math.trunc(n);
+  if (Number.isNaN(n)) return lo;
   if (n < lo) return lo;
   if (n > hi) return hi;
   return n;
 }
 
-function pctIntToProb(pctInt) {
+function toNum(value){
+  const n = Number(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function pctIntToProb(pctInt){
   return clampInt(pctInt, 0, 100) / 100;
 }
 
-function $(id) {
-  return document.getElementById(id);
+function format2(n){
+  if (!Number.isFinite(n)) return "∞";
+  return (Math.round(n * 100) / 100).toFixed(2);
 }
 
-function getInt(id) {
-  return Math.trunc(Number($(id).value));
-}
-function setInt(id, value) {
-  $(id).value = String(Math.trunc(value));
+function showModal({ title, body, buttons }){
+  $("modalTitle").textContent = title;
+  $("modalBody").innerHTML = body;
+
+  const btnWrap = $("modalBtns");
+  btnWrap.innerHTML = "";
+
+  for (const b of buttons){
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = b.primary ? "btn primary" : "btn";
+    btn.textContent = b.label;
+    btn.addEventListener("click", () => {
+      hideModal();
+      if (b.onClick) b.onClick();
+    });
+    btnWrap.appendChild(btn);
+  }
+
+  $("modal").classList.remove("hidden");
 }
 
-function expectedRolls(p) {
+function hideModal(){
+  $("modal").classList.add("hidden");
+}
+
+function setAlreadyWonUI(){
+  const pill = $("alreadyWonState");
+  $("alreadyWonBtn").setAttribute("aria-pressed", alreadyWon ? "true" : "false");
+  pill.textContent = alreadyWon ? "YES" : "NO";
+  pill.classList.toggle("on", alreadyWon);
+}
+
+function clearInputs(){
+  $("rollCost").value = "";
+  $("baseChance").value = "";
+  $("upgradeCost").value = "";
+  $("upgradeInc").value = "";
+}
+
+function expectedRolls(p){
   if (p <= 0) return Infinity;
   return 1 / p;
 }
 
-function format2(n) {
-  if (!isFinite(n)) return "∞";
-  return (Math.round(n * 100) / 100).toFixed(2);
-}
-
-function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc }) {
-  if (baseChancePct === 0 && upgradeInc === 0) {
-    return { ok: false, error: "Chance is 0% and upgrades don’t increase chance. You can’t obtain the item." };
+function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc }){
+  if (baseChancePct === 0 && upgradeInc === 0){
+    return { ok:false, error:"Chance is 0% and upgrades don’t increase chance. You can’t obtain the item." };
   }
 
   const maxUsefulUpgrades =
@@ -42,23 +85,23 @@ function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc 
 
   let best = null;
 
-  for (let k = 0; k <= maxUsefulUpgrades; k++) {
+  for (let k = 0; k <= maxUsefulUpgrades; k++){
     const perRollPct = clampInt(baseChancePct + k * upgradeInc, 0, 100);
     const p = pctIntToProb(perRollPct);
 
     const er = expectedRolls(p);
-    if (!isFinite(er)) continue;
+    if (!Number.isFinite(er)) continue;
 
     const expectedScraps = k * upgradeCost + rollCost * er;
 
-    const cand = { upgrades: k, perRollPct, expectedRollsReal: er, expectedScrapsReal: expectedScraps };
+    const cand = { upgrades:k, perRollPct, expectedRollsReal:er, expectedScrapsReal:expectedScraps };
 
     if (!best) best = cand;
     else if (cand.expectedScrapsReal < best.expectedScrapsReal) best = cand;
     else if (cand.expectedScrapsReal === best.expectedScrapsReal && cand.upgrades < best.upgrades) best = cand;
   }
 
-  if (!best) return { ok: false, error: "No strategy found." };
+  if (!best) return { ok:false, error:"No strategy found." };
 
   const recommendation =
     best.upgrades === 0
@@ -66,10 +109,10 @@ function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc 
       : `Best move: buy ${best.upgrades} upgrade${best.upgrades === 1 ? "" : "s"}, then roll.`;
 
   const tierRates = [
-    { tier: "T1", rate: 12 },
-    { tier: "T2", rate: 16 },
-    { tier: "T3", rate: 20 },
-    { tier: "T4", rate: 25 }
+    { tier:"T1", rate:12 },
+    { tier:"T2", rate:16 },
+    { tier:"T3", rate:20 },
+    { tier:"T4", rate:25 }
   ];
 
   const hoursByTier = tierRates.map(t => ({
@@ -78,45 +121,54 @@ function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc 
   }));
 
   return {
-    ok: true,
+    ok:true,
     upgrades: best.upgrades,
     perRollPct: best.perRollPct,
-    expectedRolls: best.expectedRollsReal,       
-    expectedScraps: best.expectedScrapsReal,      
+    expectedRolls: best.expectedRollsReal,
+    expectedScraps: best.expectedScrapsReal,
     recommendation,
     hoursByTier
   };
 }
 
-function solve() {
-  const rollCost = Math.max(0, getInt("rollCost"));
-  const baseChanceInput = clampInt(getInt("baseChance"), 0, 100);
-  const upgradeCost = Math.max(0, getInt("upgradeCost"));
-  const upgradeInc = Math.max(0, getInt("upgradeInc"));
+function solveMain(){
+  const rollCost = toNum($("rollCost").value);
+  const baseChanceInput = toNum($("baseChance").value);
+  const upgradeCost = toNum($("upgradeCost").value);
+  const upgradeInc = toNum($("upgradeInc").value);
 
-  const baseChanceUsed = alreadyWon ? Math.floor(baseChanceInput / 2) : baseChanceInput;
+  if (![rollCost, baseChanceInput, upgradeCost, upgradeInc].every(Number.isFinite)){
+    return { ok:false, error:"fill in all 4 inputs first." };
+  }
 
-  setInt("rollCost", rollCost);
-  setInt("baseChance", baseChanceInput);
-  setInt("upgradeCost", upgradeCost);
-  setInt("upgradeInc", upgradeInc);
+  const rollCostI = Math.max(0, Math.trunc(rollCost));
+  const baseChanceI = clampInt(baseChanceInput, 0, 100);
+  const upgradeCostI = Math.max(0, Math.trunc(upgradeCost));
+  const upgradeIncI = Math.max(0, Math.trunc(upgradeInc));
 
-  const res = computeBestStrategy({ rollCost, baseChancePct: baseChanceUsed, upgradeCost, upgradeInc });
+  const baseChanceUsed = alreadyWon ? Math.floor(baseChanceI / 2) : baseChanceI;
+
+  const res = computeBestStrategy({
+    rollCost: rollCostI,
+    baseChancePct: baseChanceUsed,
+    upgradeCost: upgradeCostI,
+    upgradeInc: upgradeIncI
+  });
+
   if (!res.ok) return res;
-
   return { ...res, baseChanceUsed };
 }
 
-function render(res) {
+function renderMain(res){
   const box = $("result");
 
-  if (!res.ok) {
-    box.innerHTML = `<div class="big">Error</div><div>${res.error}</div>`;
+  if (!res.ok){
+    box.innerHTML = `<div class="big">nope</div><div class="mono">${res.error}</div>`;
     return;
   }
 
   const penaltyNote = alreadyWon
-    ? `<div style="margin-top:8px;color:#4b4b4b;">Already won is ON → base chance used: <span class="mono">${res.baseChanceUsed}%</span></div>`
+    ? `<div style="margin-top:8px;color:#555;">Already won is ON → base chance used: <span class="mono">${res.baseChanceUsed}%</span></div>`
     : "";
 
   const tierRows = res.hoursByTier.map(x => `
@@ -131,45 +183,243 @@ function render(res) {
 
     <div class="split">
       <div class="miniBox">
-        <div class="miniTitle">Odds + Cost</div>
-        <div class="mono">Chance per roll after upgrades: ${res.perRollPct}%</div>
-        <div class="mono" style="margin-top:6px">Expected rolls: ${format2(res.expectedRolls)}</div>
-        <div class="mono" style="margin-top:6px">Expected scraps: ${format2(res.expectedScraps)}</div>
+        <div class="miniTitle">Odds + Expected Cost</div>
+        <div class="mono">chance per roll after upgrades: ${res.perRollPct}%</div>
+        <div class="mono" style="margin-top:6px">expected rolls: ${format2(res.expectedRolls)}</div>
+        <div class="mono" style="margin-top:6px">expected scraps: ${format2(res.expectedScraps)}</div>
         ${penaltyNote}
       </div>
 
       <div class="miniBox">
         <div class="miniTitle">Hours needed (scraps/hour)</div>
-        <div class="tierList">
-          ${tierRows}
-        </div>
+        <div class="tierList">${tierRows}</div>
       </div>
     </div>
   `;
 }
 
-function setAlreadyWonUI() {
-  const btn = $("alreadyWonBtn");
-  const pill = $("alreadyWonState");
-  btn.setAttribute("aria-pressed", alreadyWon ? "true" : "false");
-  pill.textContent = alreadyWon ? "YES" : "NO";
-  pill.classList.toggle("on", alreadyWon);
+
+function buildCaseStrip(count){
+  const strip = $("caseStrip");
+  strip.innerHTML = "";
+  for (let i = 0; i < count; i++){
+    const n = (i % 100) + 1; 
+    const el = document.createElement("div");
+    el.className = "caseNum";
+    el.textContent = String(n);
+    el.dataset.num = String(n);
+    strip.appendChild(el);
+  }
 }
 
-function resetDefaults() {
-  setInt("rollCost", 250);
-  setInt("baseChance", 40);
-  setInt("upgradeCost", 51);
-  setInt("upgradeInc", 5);
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+function setWarmStats(){
+  $("warmRolls").textContent = String(warmRolls);
+  $("warmScraps").textContent = String(warmScraps);
+}
+
+function warmReset(){
+  warmRolls = 0;
+  warmScraps = 0;
+  $("warmLast").textContent = "—";
+  setWarmStats();
+  $("caseStrip").style.transform = `translateX(0px)`;
+}
+
+function warmupReveal(){
+  $("warmupArea").classList.remove("hidden");
+  warmupEnabled = true;
+
+  buildCaseStrip(600);
+}
+
+function startWarmup(){
+  showModal({
+    title: "warmup time?",
+    body: "wanna try some warmup gambeling?",
+    buttons: [
+      { label: "yes", primary: true, onClick: () => warmupReveal() },
+      { label: "no", onClick: () => showModal({ title: "oh welp :P", body: "ok then. responsible arc.", buttons: [{ label: "lol", primary: true }] }) }
+    ]
+  });
+}
+
+async function spinCase(){
+  if (warmSpinning) return;
+
+  const chanceRaw = toNum($("warmChance").value);
+  const costRaw = toNum($("warmCost").value);
+  if (!Number.isFinite(chanceRaw) || !Number.isFinite(costRaw)){
+    showModal({
+      title: "missing numbers",
+      body: "put in chance (%) and scraps per roll first.",
+      buttons: [{ label: "ok", primary: true }]
+    });
+    return;
+  }
+
+  const chance = clampInt(chanceRaw, 0, 100);
+  const rollCost = Math.max(0, Math.trunc(costRaw));
+
+  const finalNumber = Math.floor(Math.random() * 100) + 1;
+
+  warmRolls += 1;
+  warmScraps += rollCost;
+  setWarmStats();
+
+  const strip = $("caseStrip");
+  const tiles = Array.from(strip.children);
+  if (tiles.length < 200){
+    buildCaseStrip(600);
+  }
+
+  const targetIndexBase = 480; 
+  let targetIndex = -1;
+  for (let i = targetIndexBase; i < tiles.length; i++){
+    if (Number(tiles[i].dataset.num) === finalNumber){
+      targetIndex = i;
+      break;
+    }
+  }
+  if (targetIndex === -1) targetIndex = targetIndexBase;
+
+  const windowEl = strip.parentElement;
+  const windowRect = windowEl.getBoundingClientRect();
+  const pointerX = windowRect.width / 2;
+
+  const tileRect = tiles[0].getBoundingClientRect();
+  const tileW = tileRect.width;
+  const gap = 10; 
+  const step = tileW + gap;
+
+  const tileCenterX = (targetIndex * step) + (tileW / 2) + 12; 
+  const targetTranslate = pointerX - tileCenterX;
+
+  const start = performance.now();
+  const duration = 2400 + Math.random() * 900; 
+  const startX = getCurrentTranslateX(strip);
+
+  warmSpinning = true;
+
+  await new Promise(resolve => {
+    function frame(now){
+      const t = Math.min(1, (now - start) / duration);
+      const eased = easeOutCubic(t);
+      const x = startX + (targetTranslate - startX) * eased;
+      strip.style.transform = `translateX(${x}px)`;
+      if (t < 1) requestAnimationFrame(frame);
+      else resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+
+  warmSpinning = false;
+
+  $("warmLast").textContent = String(finalNumber);
+
+  const win = finalNumber <= chance;
+  if (win){
+    showModal({
+      title: "CONGRATS",
+      body: `you obtained the item 🎉<br/><br/>
+            rolls: <b>${warmRolls}</b><br/>
+            scraps: <b>${warmScraps}</b><br/>
+            landed: <b>${finalNumber}</b> (needed ≤ ${chance})`,
+      buttons: [{ label: "nice", primary: true }]
+    });
+  } else {
+    showModal({
+      title: "rip",
+      body: `nope 😭<br/>landed: <b>${finalNumber}</b> (needed ≤ ${chance})`,
+      buttons: [{ label: "again", primary: true }]
+    });
+  }
+}
+
+function getCurrentTranslateX(el){
+  const st = window.getComputedStyle(el);
+  const tr = st.transform;
+  if (!tr || tr === "none") return 0;
+  const m = tr.match(/matrix\(([^)]+)\)/);
+  if (!m) return 0;
+  const parts = m[1].split(",").map(s => Number(s.trim()));
+  return parts.length >= 6 ? parts[4] : 0;
+}
+
+
+function showGate(){
+  $("gate").classList.add("show");
+  $("nuh").classList.remove("show");
+  $("app").style.display = "none";
+}
+
+function openApp(){
+  $("gate").classList.remove("show");
+  $("nuh").classList.remove("show");
+  $("app").style.display = "grid";
+}
+
+function showNuh(){
+  $("gate").classList.remove("show");
+  $("app").style.display = "none";
+  $("nuh").classList.add("show");
+  const v = $("lollVideo");
+  if (v) v.play().catch(() => {});
+}
+
+function initGate(){
+  const decision = localStorage.getItem(GATE_KEY);
+  if (decision === "yes"){
+    openApp();
+    return;
+  }
+  if (decision === "no"){
+    showNuh();
+    return;
+  }
+  showGate();
+}
+
+function resetAll(){
+  clearInputs();
   alreadyWon = false;
   setAlreadyWonUI();
+  renderMain({ ok:false, error:"put numbers in → hit Calculate." });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  $("calcBtn").addEventListener("click", () => render(solve()));
-  $("resetBtn").addEventListener("click", () => { resetDefaults(); render(solve()); });
-  $("alreadyWonBtn").addEventListener("click", () => { alreadyWon = !alreadyWon; setAlreadyWonUI(); render(solve()); });
+  $("gateYes").addEventListener("click", () => {
+    localStorage.setItem(GATE_KEY, "yes");
+    openApp();
+  });
+  $("gateNo").addEventListener("click", () => {
+    localStorage.setItem(GATE_KEY, "no");
+    showNuh();
+  });
 
-  setAlreadyWonUI();
-  render(solve());
+  initGate();
+
+  $("alreadyWonBtn").addEventListener("click", () => {
+    alreadyWon = !alreadyWon;
+    setAlreadyWonUI();
+  });
+
+  $("calcBtn").addEventListener("click", () => {
+    const res = solveMain();
+    renderMain(res);
+  });
+
+  $("resetBtn").addEventListener("click", () => resetAll());
+
+  $("warmupBtn").addEventListener("click", () => startWarmup());
+  $("warmRollBtn").addEventListener("click", () => spinCase());
+  $("warmResetBtn").addEventListener("click", () => {
+    $("warmChance").value = "";
+    $("warmCost").value = "";
+    warmReset();
+  });
+
+  resetAll();
+  warmReset();
 });

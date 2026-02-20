@@ -3,84 +3,156 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Scraps - Cheapest Calc</title>
+  <title>Scraps — Cheapest Method</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-  <main class="wrap">
+  <div id="gate" class="gate">
+    <div class="gateCard">
+      <div class="stamp">heads up</div>
+      <h1 class="gateTitle">quick warning:</h1>
+      <p class="gateText">
+        this calculator may be inaccurate sometimes.<br/>
+        I 100% do <b>not</b> encourage gambling.<br/>
+        use your brain. be chill.
+      </p>
+
+      <div class="gateBtns">
+        <button id="gateYes" class="btn primary" type="button">yuh uh</button>
+        <button id="gateNo" class="btn" type="button">nuh uh</button>
+      </div>
+
+      <p class="tiny">decision is saved locally (cache/localStorage).</p>
+    </div>
+  </div>
+
+  <div id="nuh" class="nuh">
+    <video id="lollVideo" class="nuhVideo" autoplay muted loop playsinline>
+      <source src="loll.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <main id="app" class="wrap">
     <header class="header">
       <div class="badge">SCRAPS</div>
+
+      <div class="postits">
+        <div class="postit a">made by @Iamalive</div>
+        <div class="postit b">totally not gambling</div>
+      </div>
+
       <h1>Cheapest Method Calculator</h1>
       <p class="sub">
-        Enter item roll cost + base chance, and refinery upgrade cost + boost.
-        This outputs the cheapest strategy (minimum <b>expected scraps</b>) and how many <b>hours</b> you need at each tier.
+        Input item roll cost + base chance, refinery upgrade cost + boost.
+        Finds the cheapest strategy (<b>minimum expected scraps</b>).
+        “Already won?” halves your base chance.
       </p>
     </header>
-
-    <aside class="postit postit-a">made by @Iamalive</aside>
-    <aside class="postit postit-b">totally not gambling</aside>
 
     <section class="card tape">
       <div class="cardHead">
         <h2>Inputs</h2>
 
-        <button
-          id="alreadyWonBtn"
-          class="toggle"
-          type="button"
-          aria-pressed="false"
-          title="If you already won this item before, base chance gets halved."
-        >
-          Already won? <span class="pill" id="alreadyWonState">NO</span>
+        <button id="alreadyWonBtn" class="btn toggle" type="button" aria-pressed="false">
+          Already won? <span id="alreadyWonState" class="pill">NO</span>
         </button>
       </div>
 
       <div class="grid">
         <label class="field">
           <span>Item roll cost (scraps)</span>
-          <input id="rollCost" type="number" min="0" step="1" value="250" />
+          <input id="rollCost" type="number" min="0" step="1" placeholder="e.g. 250" />
         </label>
 
         <label class="field">
           <span>Base chance per roll (%)</span>
-          <input id="baseChance" type="number" min="0" max="100" step="1" value="40" />
+          <input id="baseChance" type="number" min="0" max="100" step="1" placeholder="e.g. 40" />
         </label>
 
         <label class="field">
           <span>Upgrade cost (scraps)</span>
-          <input id="upgradeCost" type="number" min="0" step="1" value="51" />
+          <input id="upgradeCost" type="number" min="0" step="1" placeholder="e.g. 51" />
         </label>
 
         <label class="field">
           <span>Chance increase per upgrade (%)</span>
-          <input id="upgradeInc" type="number" min="0" step="1" value="5" />
+          <input id="upgradeInc" type="number" min="0" step="1" placeholder="e.g. 5" />
         </label>
       </div>
 
       <div class="row">
-        <button id="calcBtn" class="primary" type="button">Calculate</button>
-        <button id="resetBtn" class="ghost" type="button">Reset</button>
+        <button id="calcBtn" class="btn primary" type="button">Calculate</button>
+        <button id="resetBtn" class="btn" type="button">Reset</button>
       </div>
 
       <p class="hint">
-        Assumes refinery upgrades persist after failed rolls.
-        Tier rates are <b>scraps per hour</b>: T1=12, T2=16, T3=20, T4=25.
+        Tier rates are <b>scraps/hour</b>: T1=12, T2=16, T3=20, T4=25.
+        Expected rolls are shown as decimals (not rounded btw).
       </p>
     </section>
 
     <section class="card">
       <h2>Result</h2>
       <div id="result" class="result">
-        Enter values and hit <b>Calculate</b>.
+        put numbers in → hit <b>Calculate</b>.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Warmup</h2>
+      <button id="warmupBtn" class="btn wide" type="button">wanna try some warmup gambling?</button>
+
+      <div id="warmupArea" class="warmupArea hidden">
+        <div class="warmupTop">
+          <div class="scrapTag">warmup zone</div>
+          <div class="warmupNote">numbers 1–100 will spin and slow down. win if the final number ≤ your chance.</div>
+        </div>
+
+        <div class="grid">
+          <label class="field">
+            <span>Chance to obtain (%)</span>
+            <input id="warmChance" type="number" min="0" max="100" step="1" placeholder="e.g. 25" />
+          </label>
+
+          <label class="field">
+            <span>Scraps used per roll</span>
+            <input id="warmCost" type="number" min="0" step="1" placeholder="e.g. 250" />
+          </label>
+        </div>
+
+        <div class="row">
+          <button id="warmRollBtn" class="btn primary" type="button">try gambeling</button>
+          <button id="warmResetBtn" class="btn" type="button">reset warmup</button>
+        </div>
+
+        <div class="case">
+          <div class="caseWindow">
+            <div class="casePointer"></div>
+            <div id="caseStrip" class="caseStrip" aria-label="roulette numbers"></div>
+          </div>
+          <div class="caseStats">
+            <div class="stat"><span class="k">rolls</span><span id="warmRolls" class="v">0</span></div>
+            <div class="stat"><span class="k">scraps</span><span id="warmScraps" class="v">0</span></div>
+            <div class="stat"><span class="k">last</span><span id="warmLast" class="v">—</span></div>
+          </div>
+        </div>
       </div>
     </section>
 
     <footer class="footer">
-      <p>
-        “Expected” means long-run average. You can still win early or late - this is the cheapest strategy on average. :p 
-      </p>
+      <p>tried my best to copy scraps ui, uh does it look good lmao</p>
     </footer>
   </main>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modalCard">
+      <div id="modalTitle" class="modalTitle">hey</div>
+      <div id="modalBody" class="modalBody">…</div>
+      <div id="modalBtns" class="modalBtns"></div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>
