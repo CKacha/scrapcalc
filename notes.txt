@@ -19,3 +19,10 @@ Total cost: () | Chance per roll: ()% | Total chance: ()%
 Hours: (T1), (T2), (T3), (T4)
 
 IF I HAD ACCESS TO THE AIRTABLE I COULDVE MADE THIS BETTER 
+
+
+I feel like i have to let this be known somehow but i actually used freaking calculus to make the algorithm LMAOOOOO
+
+ap calc finally has a use huh
+
+actually wait maybe i can use it to make a graph.....
