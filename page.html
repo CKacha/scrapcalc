@@ -21,7 +21,15 @@
         <button id="gateYes" class="btn primary" type="button">yuh uh</button>
         <button id="gateNo" class="btn" type="button">nuh uh</button>
       </div>
-      <p class="tiny">decision is saved locally (via cache/localStorage).</p>
+      <p class="tiny">decision is saved via cache(so choose wisely)</p>
+
+      <div class="cornerNote">
+        hey this is 100% better than that other scraps calculator....(no shade tho fr)<br />
+        ( if ya want to check it out
+        <a href="https://xordas.me/scraps-calculator/" target="_blank">
+            https://xordas.me/scraps-calculator/
+        </a> )
+      </div> 
     </div>
   </div>
 
@@ -62,46 +70,56 @@
       </p>
     </header>
 
-    <section class="card tape">
-      <div class="cardHead">
-        <h2>Inputs</h2>
-        <button id="alreadyWonBtn" class="btn toggle" type="button" aria-pressed="false">
-          Already won? <span id="alreadyWonState" class="pill">NO</span>
-        </button>
-      </div>
+    <div class="calcLayout">
+      <section class="card tape">
+        <div class="cardHead">
+          <h2>Inputs</h2>
+          <button id="alreadyWonBtn" class="btn toggle" type="button" aria-pressed="false">
+            Already won? <span id="alreadyWonState" class="pill">NO</span>
+          </button>
+        </div>
+        
+        <div class="grid">
+          <label class="field">
+            <span>Item roll cost (scraps)</span>
+            <input id="rollCost" type="number" min="0" step="1" placeholder="e.g. 250" />
+          </label>
 
-      <div class="grid">
-        <label class="field">
-          <span>Item roll cost (scraps)</span>
-          <input id="rollCost" type="number" min="0" step="1" placeholder="e.g. 250" />
-        </label>
+          <label class="field">
+            <span>Base chance per roll (%)</span>
+            <input id="baseChance" type="number" min="0" max="100" step="1" placeholder="e.g. 40" />
+          </label>
 
-        <label class="field">
-          <span>Base chance per roll (%)</span>
-          <input id="baseChance" type="number" min="0" max="100" step="1" placeholder="e.g. 40" />
-        </label>
+          <label class="field">
+            <span>Upgrade cost (scraps)</span>
+            <input id="upgradeCost" type="number" min="0" step="1" placeholder="e.g. 51" />
+          </label>
 
-        <label class="field">
-          <span>Upgrade cost (scraps)</span>
-          <input id="upgradeCost" type="number" min="0" step="1" placeholder="e.g. 51" />
-        </label>
+          <label class="field">
+            <span>Chance increase per refinery upgrade (%)</span>
+            <input id="upgradeInc" type="number" min="0" step="1" placeholder="e.g. 5" />
+          </label>
+        </div>
 
-        <label class="field">
-          <span>Chance increase per refinery upgrade (%)</span>
-          <input id="upgradeInc" type="number" min="0" step="1" placeholder="e.g. 5" />
-        </label>
-      </div>
+        <div class="row">
+          <button id="calcBtn" class="btn primary" type="button">Calculate</button>
+          <button id="resetBtn" class="btn" type="button">Reset</button>
+        </div>
 
-      <div class="row">
-        <button id="calcBtn" class="btn primary" type="button">Calculate</button>
-        <button id="resetBtn" class="btn" type="button">Reset</button>
-      </div>
+        <p class="hint">
+          Tier rates are <b>scraps/hour</b>: T1 = 12, T2 = 16, T3 = 20, T4 = 25.
+          Expected rolls are shown as decimals (not rounded bc i dont want to be in boolean pain).
+        </p>
+      </section>
 
-      <p class="hint">
-        Tier rates are <b>scraps/hour</b>: T1 = 12, T2 = 16, T3 = 20, T4 = 25.
-        Expected rolls are shown as decimals (not rounded bc i dont want to be in boolean pain).
-      </p>
-    </section>
+      <section class="card chartCard">
+        <h2>Graph</h2>
+        <div id="chartEmpty" class="chartEmpty">hit <b>Calculate!</b> to generate graph</div>
+        <div id="chartWrap" class="chartWrap hidden">
+          <canvas id="strategyChart"></canvas>
+        </div>
+      </section>
+    </div>
 
     <section class="card">
       <h2>Result</h2>
@@ -167,6 +185,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

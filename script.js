@@ -6,6 +6,8 @@ let warmRolls = 0;
 let warmScraps = 0;
 let warmSpinning = false;
 
+let strategyChart = null;
+
 function $(id){ return document.getElementById(id); }
 
 function clampInt(n, lo, hi){
@@ -115,8 +117,72 @@ function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc 
     expectedRolls: best.expectedRollsReal,
     expectedScraps: best.expectedScrapsReal,
     recommendation,
-    hoursByTier
+    hoursByTier,
+    maxUsefulUpgrades
   };
+}
+
+function buildCurveData(rollCost, baseChancePct, upgradeCost, upgradeInc){
+  const maxK = upgradeInc > 0 ? Math.max(0, Math.ceil((100 - baseChancePct) / upgradeInc)) : 0;
+  const xs = [];
+  const ys = [];
+  for (let k = 0; k <= maxK; k++){
+    const perRollPct = clampInt(baseChancePct + k * upgradeInc, 0, 100);
+    const p = pctIntToProb(perRollPct);
+    const er = expectedRolls(p);
+    const expectedScrapsVal = Number.isFinite(er) ? (k * upgradeCost + rollCost * er) : null;
+    xs.push(k);
+    ys.push(expectedScrapsVal);
+  }
+  return { xs, ys };
+}
+
+function renderChart(curve, bestK){
+  const empty = $("chartEmpty");
+  const wrap = $("chartWrap");
+  const canvas = $("strategyChart");
+  if (!canvas) return;
+
+  empty.classList.add("hidden");
+  wrap.classList.remove("hidden");
+
+  const dataPoints = curve.xs.map((k, i) => ({ x: k, y: curve.ys[i] })).filter(p => p.y !== null);
+
+  if (!strategyChart){
+    strategyChart = new Chart(canvas.getContext("2d"), {
+      type: "line",
+      data: {
+        datasets: [
+          { data: dataPoints, pointRadius: 2, tension: 0.2 },
+          { data: [{ x: bestK, y: curve.ys[bestK] }], type:"scatter", pointRadius: 6 }
+        ]
+      },
+      options: {
+        responsive: true,   
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: true } },
+        scales: {
+          x: { title: { display: true, text: "upgrades" }, ticks: { precision: 0 } },
+          y: { title: { display: true, text: "expected scraps" } }
+        }
+      }
+    });
+  } else {
+    strategyChart.data.datasets[0].data = dataPoints;
+    strategyChart.data.datasets[1].data = [{ x: bestK, y: curve.ys[bestK] }];
+    strategyChart.update();
+  }
+}
+
+function resetChart(){
+  const empty = $("chartEmpty");
+  const wrap = $("chartWrap");
+  empty.classList.remove("hidden");
+  wrap.classList.add("hidden");
+  if (strategyChart){
+    strategyChart.destroy();
+    strategyChart = null;
+  }
 }
 
 function solveMain(){
@@ -144,7 +210,7 @@ function solveMain(){
   });
 
   if (!res.ok) return res;
-  return { ...res, baseChanceUsed };
+  return { ...res, baseChanceUsed, rollCostI, baseChanceI, upgradeCostI, upgradeIncI, baseChanceUsed };
 }
 
 function renderMain(res){
@@ -369,6 +435,7 @@ function resetAll(){
   alreadyWon = false;
   setAlreadyWonUI();
   $("result").innerHTML = `put numbers in → hit <b>Calculate</b>.`;
+  resetChart();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -388,7 +455,17 @@ document.addEventListener("DOMContentLoaded", () => {
     setAlreadyWonUI();
   });
 
-  $("calcBtn").addEventListener("click", () => renderMain(solveMain()));
+  $("calcBtn").addEventListener("click", () => {
+    const res = solveMain();
+    renderMain(res);
+    if (res.ok){
+      const curve = buildCurveData(res.rollCostI, res.baseChanceUsed, res.upgradeCostI, res.upgradeIncI);
+      renderChart(curve, res.upgrades);
+    } else {
+      resetChart();
+    }
+  });
+
   $("resetBtn").addEventListener("click", () => resetAll());
 
   $("warmupBtn").addEventListener("click", () => startWarmupFlow());
