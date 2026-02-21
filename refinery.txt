@@ -1,0 +1,59 @@
+Im gonna crash out 
+
+NEW THINGS:
+
+refinery gets cheaper with succesive purchases
+
+Current examples I can tell from refinery upgrades I can get:
+
+chicken
+base price: 18
+%: 37
+
+1st:12
+2st:11
+3nd:11
+4rd:10
+5th:10
+
+daydream shirts
+base price: 40
+%: 56
+
+1st:17
+2nd:16
+3rd:16
+4th:15
+
+redboards
+base price: 17
+%: 34
+
+1st:12
+2nd:11
+3rd:11
+4th:10
+5th:10
+6th:9
+
+led sets 
+base price: 8
+%: 37
+
+1st:5
+2nd:5
+3rd:4
+4th:4
+5th:4
+
+stickers
+inital:8
+base price:79
+%:
+
+1st:2
+2nd:2
+3rd:2
+4th:2
+5th:2
+6th:1

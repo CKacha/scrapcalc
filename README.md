@@ -9,11 +9,10 @@ Go to https://github
 
 Downlaod the entire repo! (You won't need any libraries thankfully :D)
 
+run: **python -m http.server 8000** in the repo folder
 
+go to: **http://localhost:8000/page.html** and it should be up!
 
-python -m http.server 8000
-
-http://localhost:8000/page.html
 
 (btw if you're here bc ya cliked no gambeling paste this in console):
 
