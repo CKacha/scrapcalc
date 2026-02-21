@@ -123,7 +123,7 @@ function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc 
 }
 
 function buildCurveData(rollCost, baseChancePct, upgradeCost, upgradeInc){
-  const maxK = upgradeInc > 0 ? Math.max(0, Math.ceil((100 - baseChancePct) / upgradeInc)) : 0;
+  const maxK = 25;
   const xs = [];
   const ys = [];
   for (let k = 0; k <= maxK; k++){
@@ -158,11 +158,17 @@ function renderChart(curve, bestK){
         ]
       },
       options: {
-        responsive: true,   
+        responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { enabled: true } },
         scales: {
-          x: { title: { display: true, text: "upgrades" }, ticks: { precision: 0 } },
+          x: {
+            type: "linear",
+            min: 0,
+            max: 25,
+            title: { display: true, text: "upgrades" },
+            ticks: { stepSize: 1, precision: 0 }
+          },
           y: { title: { display: true, text: "expected scraps" } }
         }
       }
@@ -170,6 +176,9 @@ function renderChart(curve, bestK){
   } else {
     strategyChart.data.datasets[0].data = dataPoints;
     strategyChart.data.datasets[1].data = [{ x: bestK, y: curve.ys[bestK] }];
+    strategyChart.options.scales.x.min = 0;
+    strategyChart.options.scales.x.max = 25;
+    strategyChart.options.scales.x.ticks.stepSize = 1;
     strategyChart.update();
   }
 }
@@ -479,3 +488,5 @@ document.addEventListener("DOMContentLoaded", () => {
   resetAll();
   warmReset();
 });
+
+
