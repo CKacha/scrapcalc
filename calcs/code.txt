@@ -1,6 +1,8 @@
 //gonna copy & paste the repo code and see wtf it does 
 //nathan what the heck are you doing 
 
+$4/hr rate now apparently?
+
 Checking all recent commits what should be related to the calcs 
 
 // Roll cost = baseProbability% of item price. Does not scale with upgrades.
@@ -30,3 +32,7 @@ export function getUpgradeCost(price: number, upgradeCount: number): number | nu
 export function getUpgradeCost(price: number, upgradeCount: number, actualSpent?: number): number | null {
   const maxBudget = price * UPGRADE_MAX_BUDGET_MULTIPLIER;
 }
+
+
+nvm screw commit history im just gonna read through scrap.ts fully 
+
