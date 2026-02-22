@@ -3,7 +3,7 @@ import { randomInt } from "crypto";
 import { eq, sql, and, desc, isNull, ne, or, gt } from "drizzle-orm";
 import { db } from "../db";
 import {
-  shopItemsTable,
+  shopItemsTable, 
   shopHeartsTable,
   shopOrdersTable,
   shopRollsTable,
