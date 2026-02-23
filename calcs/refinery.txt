@@ -47,7 +47,6 @@ base price: 8
 5th:4
 
 stickers
-inital:8
 base price:79
 %:
 
@@ -57,3 +56,24 @@ base price:79
 4th:2
 5th:2
 6th:1
+
+some mor bc i think im on crack
+
+lobster hat
+1st:24
+2nd:23
+3rd:21
+
+beanie
+1st:54
+2nd:51
+
+board game
+1st:36
+2nd:34
+
+random item
+1st:40
+2nd:38
+
+welp it checks out ohu fffff q

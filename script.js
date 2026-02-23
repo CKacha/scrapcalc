@@ -10,6 +10,11 @@ let strategyChart = null;
 
 function $(id){ return document.getElementById(id); }
 
+function scrapsToUSD(scraps){
+  if (!Number.isFinite(scraps)) return Infinity;
+  return (scraps / 16) * 5;
+}
+
 function clampInt(n, lo, hi){
   n = Math.trunc(n);
   if (Number.isNaN(n)) return lo;
@@ -21,10 +26,6 @@ function clampInt(n, lo, hi){
 function toNum(value){
   const n = Number(value);
   return Number.isFinite(n) ? n : NaN;
-}
-
-function pctIntToProb(pctInt){
-  return clampInt(pctInt, 0, 100) / 100;
 }
 
 function format2(n){
@@ -67,39 +68,93 @@ function clearInputs(){
   $("upgradeInc").value = "";
 }
 
-function expectedRolls(p){
-  if (p <= 0) return Infinity;
-  return 1 / p;
+function computeRollThreshold(probabilityPct){
+  return Math.max(1, Math.floor((probabilityPct * 17) / 20));
 }
 
-function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc }){
-  if (baseChancePct === 0 && upgradeInc === 0){
+function expectedRollSpendWithEscalation(baseRollCost, winProb){
+  if (winProb <= 0) return Infinity;
+
+  let spend = 0;
+  let survive = 1;
+
+  for (let i = 0; i < 4000; i++){
+    const rollCost = Math.max(1, Math.round(baseRollCost * (1 + 0.05 * i)));
+    spend += survive * rollCost;
+    survive *= (1 - winProb);
+    if (survive < 1e-12) break;
+  }
+
+  return spend;
+}
+
+function getUpgradeCostFromBase(baseUpgradeCost, upgradeCount){
+  return Math.max(1, Math.floor(baseUpgradeCost / Math.pow(1.05, upgradeCount)));
+}
+
+function computeBestStrategy({ baseRollCost, baseProbabilityPct, baseUpgradeCost, boostAmountPct }){
+  const price = Math.max(1, baseUpgradeCost * 4);
+  const cap = price * 3;
+
+  if (baseProbabilityPct <= 0 && boostAmountPct <= 0){
     return { ok:false, error:"Chance is 0% and upgrades don’t increase chance. You can’t obtain the item." };
   }
 
-  const maxUsefulUpgrades =
-    upgradeInc > 0 ? Math.max(0, Math.ceil((100 - baseChancePct) / upgradeInc)) : 0;
-
+  const maxK = 25;
   let best = null;
+  const curve = { xs: [], ys: [] };
 
-  for (let k = 0; k <= maxUsefulUpgrades; k++){
-    const perRollPct = clampInt(baseChancePct + k * upgradeInc, 0, 100);
-    const p = pctIntToProb(perRollPct);
-    const er = expectedRolls(p);
-    if (!Number.isFinite(er)) continue;
-    const expectedScraps = k * upgradeCost + rollCost * er;
-    const cand = { upgrades:k, perRollPct, expectedRollsReal:er, expectedScrapsReal:expectedScraps };
+  for (let k = 0; k <= maxK; k++){
+    let spentUpgrades = 0;
+    let boost = 0;
+    let possible = true;
+
+    for (let i = 0; i < k; i++){
+      const c = getUpgradeCostFromBase(baseUpgradeCost, i);
+      if (spentUpgrades + c > cap){
+        possible = false;
+        break;
+      }
+      spentUpgrades += c;
+      boost += boostAmountPct;
+    }
+
+    if (!possible){
+      curve.xs.push(k);
+      curve.ys.push(null);
+      continue;
+    }
+
+    const displayed = clampInt(baseProbabilityPct + boost, 0, 100);
+    const threshold = computeRollThreshold(displayed);
+    const winProb = threshold / 100;
+
+    const expectedRollSpend = expectedRollSpendWithEscalation(baseRollCost, winProb);
+    const expectedTotal = spentUpgrades + expectedRollSpend;
+
+    curve.xs.push(k);
+    curve.ys.push(Number.isFinite(expectedTotal) ? expectedTotal : null);
+
+    const cand = {
+      upgrades: k,
+      displayedPct: displayed,
+      threshold,
+      actualWinPct: threshold,
+      expectedRolls: winProb > 0 ? (1 / winProb) : Infinity,
+      expectedRollSpend,
+      spentUpgrades,
+      expectedTotal,
+      impliedUSD: scrapsToUSD(expectedTotal),
+      price,
+      cap
+    };
+
     if (!best) best = cand;
-    else if (cand.expectedScrapsReal < best.expectedScrapsReal) best = cand;
-    else if (cand.expectedScrapsReal === best.expectedScrapsReal && cand.upgrades < best.upgrades) best = cand;
+    else if (cand.expectedTotal < best.expectedTotal) best = cand;
+    else if (cand.expectedTotal === best.expectedTotal && cand.upgrades < best.upgrades) best = cand;
   }
 
-  if (!best) return { ok:false, error:"No strategy found." };
-
-  const recommendation =
-    best.upgrades === 0
-      ? "Best move: roll only (no refinery upgrades)."
-      : `Best move: buy ${best.upgrades} upgrade${best.upgrades === 1 ? "" : "s"}, then roll.`;
+  if (!best) return { ok:false, error:"No valid strategy found." };
 
   const tierRates = [
     { tier:"T1", rate:12 },
@@ -108,45 +163,32 @@ function computeBestStrategy({ rollCost, baseChancePct, upgradeCost, upgradeInc 
     { tier:"T4", rate:25 }
   ];
 
-  const hoursByTier = tierRates.map(t => ({ tier: t.tier, hours: best.expectedScrapsReal / t.rate }));
+  const hoursByTier = tierRates.map(t => ({ tier: t.tier, hours: best.expectedTotal / t.rate }));
 
-  return {
-    ok:true,
-    upgrades: best.upgrades,
-    perRollPct: best.perRollPct,
-    expectedRolls: best.expectedRollsReal,
-    expectedScraps: best.expectedScrapsReal,
-    recommendation,
-    hoursByTier,
-    maxUsefulUpgrades
-  };
+  const recommendation =
+    best.upgrades === 0
+      ? "Best move: roll only (no refinery upgrades)."
+      : `Best move: buy ${best.upgrades} upgrade${best.upgrades === 1 ? "" : "s"}, then roll.`;
+
+  return { ok:true, ...best, hoursByTier, recommendation, curve };
 }
 
-function buildCurveData(rollCost, baseChancePct, upgradeCost, upgradeInc){
-  const maxK = 25;
-  const xs = [];
-  const ys = [];
-  for (let k = 0; k <= maxK; k++){
-    const perRollPct = clampInt(baseChancePct + k * upgradeInc, 0, 100);
-    const p = pctIntToProb(perRollPct);
-    const er = expectedRolls(p);
-    const expectedScrapsVal = Number.isFinite(er) ? (k * upgradeCost + rollCost * er) : null;
-    xs.push(k);
-    ys.push(expectedScrapsVal);
-  }
-  return { xs, ys };
+function buildCurveData(res){
+  return res.curve;
 }
 
 function renderChart(curve, bestK){
   const empty = $("chartEmpty");
   const wrap = $("chartWrap");
   const canvas = $("strategyChart");
-  if (!canvas) return;
+  if (!canvas || typeof Chart === "undefined") return;
 
   empty.classList.add("hidden");
   wrap.classList.remove("hidden");
 
   const dataPoints = curve.xs.map((k, i) => ({ x: k, y: curve.ys[i] })).filter(p => p.y !== null);
+
+  const bestY = curve.ys[bestK];
 
   if (!strategyChart){
     strategyChart = new Chart(canvas.getContext("2d"), {
@@ -154,7 +196,7 @@ function renderChart(curve, bestK){
       data: {
         datasets: [
           { data: dataPoints, pointRadius: 2, tension: 0.2 },
-          { data: [{ x: bestK, y: curve.ys[bestK] }], type:"scatter", pointRadius: 6 }
+          { data: bestY == null ? [] : [{ x: bestK, y: bestY }], type:"scatter", pointRadius: 6 }
         ]
       },
       options: {
@@ -175,7 +217,7 @@ function renderChart(curve, bestK){
     });
   } else {
     strategyChart.data.datasets[0].data = dataPoints;
-    strategyChart.data.datasets[1].data = [{ x: bestK, y: curve.ys[bestK] }];
+    strategyChart.data.datasets[1].data = bestY == null ? [] : [{ x: bestK, y: bestY }];
     strategyChart.options.scales.x.min = 0;
     strategyChart.options.scales.x.max = 25;
     strategyChart.options.scales.x.ticks.stepSize = 1;
@@ -183,43 +225,32 @@ function renderChart(curve, bestK){
   }
 }
 
-function resetChart(){
-  const empty = $("chartEmpty");
-  const wrap = $("chartWrap");
-  empty.classList.remove("hidden");
-  wrap.classList.add("hidden");
-  if (strategyChart){
-    strategyChart.destroy();
-    strategyChart = null;
-  }
-}
-
 function solveMain(){
-  const rollCost = toNum($("rollCost").value);
-  const baseChanceInput = toNum($("baseChance").value);
-  const upgradeCost = toNum($("upgradeCost").value);
-  const upgradeInc = toNum($("upgradeInc").value);
+  const rollCostRaw = toNum($("rollCost").value);
+  const baseChanceRaw = toNum($("baseChance").value);
+  const upgradeCostRaw = toNum($("upgradeCost").value);
+  const upgradeIncRaw = toNum($("upgradeInc").value);
 
-  if (![rollCost, baseChanceInput, upgradeCost, upgradeInc].every(Number.isFinite)){
+  if (![rollCostRaw, baseChanceRaw, upgradeCostRaw, upgradeIncRaw].every(Number.isFinite)){
     return { ok:false, error:"fill in all 4 inputs first." };
   }
 
-  const rollCostI = Math.max(0, Math.trunc(rollCost));
-  const baseChanceI = clampInt(baseChanceInput, 0, 100);
-  const upgradeCostI = Math.max(0, Math.trunc(upgradeCost));
-  const upgradeIncI = Math.max(0, Math.trunc(upgradeInc));
+  const baseRollCost = Math.max(1, Math.trunc(rollCostRaw));
+  const baseChance = clampInt(baseChanceRaw, 0, 100);
+  const baseUpgradeCost = Math.max(1, Math.trunc(upgradeCostRaw));
+  const boostAmount = Math.max(0, Math.trunc(upgradeIncRaw));
 
-  const baseChanceUsed = alreadyWon ? Math.floor(baseChanceI / 2) : baseChanceI;
+  const baseChanceUsed = alreadyWon ? Math.floor(baseChance / 2) : baseChance;
 
   const res = computeBestStrategy({
-    rollCost: rollCostI,
-    baseChancePct: baseChanceUsed,
-    upgradeCost: upgradeCostI,
-    upgradeInc: upgradeIncI
+    baseRollCost,
+    baseProbabilityPct: baseChanceUsed,
+    baseUpgradeCost,
+    boostAmountPct: boostAmount
   });
 
   if (!res.ok) return res;
-  return { ...res, baseChanceUsed, rollCostI, baseChanceI, upgradeCostI, upgradeIncI, baseChanceUsed };
+  return { ...res, baseChanceUsed, baseRollCost, baseChance, baseUpgradeCost, boostAmount };
 }
 
 function renderMain(res){
@@ -246,9 +277,12 @@ function renderMain(res){
     <div class="split">
       <div class="miniBox">
         <div class="miniTitle">Odds + Expected Cost</div>
-        <div class="mono">chance per roll after upgrades: ${res.perRollPct}%</div>
+        <div class="mono">chance per roll after upgrades: ${res.displayedPct}%</div>
         <div class="mono" style="margin-top:6px">expected rolls: ${format2(res.expectedRolls)}</div>
-        <div class="mono" style="margin-top:6px">expected scraps: ${format2(res.expectedScraps)}</div>
+        <div class="mono" style="margin-top:6px">expected roll scraps (avg): ${format2(res.expectedRollSpend)}</div>
+        <div class="mono" style="margin-top:6px">upgrade scraps spent: ${format2(res.spentUpgrades)}</div>
+        <div class="mono" style="margin-top:6px">expected total scraps: ${format2(res.expectedTotal)}</div>
+        <div class="mono" style="margin-top:10px">Implied value(USD): $${format2(res.impliedUSD)} · upgrade cap: ${res.cap}</div>
         ${penaltyNote}
       </div>
       <div class="miniBox">
@@ -257,6 +291,12 @@ function renderMain(res){
       </div>
     </div>
   `;
+
+  // <div class="mono" style="margin-top:6px">actual win chance (house edge): ${res.actualWinPct}%</div>
+  // ive been told not to leak uh congrats on finding this!
+
+  const curve = buildCurveData(res);
+  renderChart(curve, res.upgrades);
 }
 
 function setWarmStats(){
@@ -444,7 +484,16 @@ function resetAll(){
   alreadyWon = false;
   setAlreadyWonUI();
   $("result").innerHTML = `put numbers in → hit <b>Calculate</b>.`;
-  resetChart();
+  const empty = $("chartEmpty");
+  const wrap = $("chartWrap");
+  if (empty && wrap){
+    empty.classList.remove("hidden");
+    wrap.classList.add("hidden");
+  }
+  if (strategyChart){
+    strategyChart.destroy();
+    strategyChart = null;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -467,12 +516,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("calcBtn").addEventListener("click", () => {
     const res = solveMain();
     renderMain(res);
-    if (res.ok){
-      const curve = buildCurveData(res.rollCostI, res.baseChanceUsed, res.upgradeCostI, res.upgradeIncI);
-      renderChart(curve, res.upgrades);
-    } else {
-      resetChart();
-    }
   });
 
   $("resetBtn").addEventListener("click", () => resetAll());
@@ -488,5 +531,3 @@ document.addEventListener("DOMContentLoaded", () => {
   resetAll();
   warmReset();
 });
-
-

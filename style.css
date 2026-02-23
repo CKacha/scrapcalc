@@ -291,12 +291,12 @@ h2{
 }
 
 .casePointer{
-  position:absolute;
-  top:0; bottom:0;
-  left:50%;
-  width: 0;
-  transform: translateX(-50%);
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+  transform: translateX(-50%) translateZ(0);
 }
+
 .casePointer::before{
   content:"";
   position:absolute;
@@ -309,6 +309,7 @@ h2{
   border-bottom: none;
   border-radius: 10px 10px 0 0;
 }
+
 .casePointer::after{
   content:"";
   position:absolute;
@@ -330,6 +331,8 @@ h2{
   padding: 0 12px;
   transform: translateX(0px);
   will-change: transform;
+  position: relative;
+  z-index: 1;
 }
 
 .caseNum{
@@ -520,6 +523,8 @@ h2{
 }
 
 .hidden{ display:none !important; }
+
+
 
 @media (max-width: 900px){
   .postits{ position: static; margin-top: 10px; }
