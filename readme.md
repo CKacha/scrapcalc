@@ -3,7 +3,7 @@ I dont trust the already existing scrap calculator... Gonna make my own :p
 
 Currently hosted on github pages!
 
-Go to https://github
+Go to https://ckacha.github.io/scrapcalc/
 
 # Self hosting:
 
