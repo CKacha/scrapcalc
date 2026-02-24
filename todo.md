@@ -1,21 +1,9 @@
-https://github.com/CKacha/scrapcalc/settings/pages
+ok good but need to update
 
-get the pages on sometime idiot
+binomial distribution
 
-the hell is a drizzle folder sob
+https://en.wikipedia.org/wiki/Binomial_distribution
 
-that admin.ts was hell to parse
+P(X = k) = ( n of k) p^k (1-p)^(n-k)
 
-find & grab following:
-
-import {
-  shopItemsTable,
-  shopOrdersTable,
-  shopHeartsTable,
-  shopRollsTable,
-  refineryOrdersTable,
-  shopPenaltiesTable,
-  refinerySpendingHistoryTable,
-} from "../schemas/shop";
-import { calculateScrapsFromHours, getUserScrapsBalance, TIER_MULTIPLIERS, DOLLARS_PER_HOUR, SCRAPS_PER_DOLLAR } from "../lib/scraps";
-import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
+im gonna crash out

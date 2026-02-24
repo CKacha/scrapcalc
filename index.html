@@ -99,6 +99,11 @@
             <span>Chance increase per refinery upgrade (%)</span>
             <input id="upgradeInc" type="number" min="0" step="1" placeholder="e.g. 5" />
           </label>
+
+          <label class="field">
+            <span>Target chance to have won (%)</span>
+            <input id="targetChance" type="number" min="0" max="100" step="1" placeholder="e.g. 90" />
+          </label>
         </div>
 
         <div class="row">
@@ -108,7 +113,7 @@
 
         <p class="hint">
           Tier rates are <b>scraps/hour</b>: T1 = 12, T2 = 16, T3 = 20, T4 = 25.
-          Expected rolls are shown as decimals (not rounded bc i dont want to be in boolean pain).
+          Target chance uses <b>1 - (1 - p)^n</b> 
         </p>
       </section>
 

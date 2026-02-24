@@ -66,6 +66,7 @@ function clearInputs(){
   $("baseChance").value = "";
   $("upgradeCost").value = "";
   $("upgradeInc").value = "";
+  $("targetChance").value = "";
 }
 
 function computeRollThreshold(probabilityPct){
@@ -92,13 +93,50 @@ function getUpgradeCostFromBase(baseUpgradeCost, upgradeCount){
   return Math.max(1, Math.floor(baseUpgradeCost / Math.pow(1.05, upgradeCount)));
 }
 
-function computeBestStrategy({ baseRollCost, baseProbabilityPct, baseUpgradeCost, boostAmountPct }){
+function rollCostAt(baseRollCost, i){
+  return Math.max(1, Math.round(baseRollCost * (1 + 0.05 * i)));
+}
+
+function totalRollSpendForNRolls(baseRollCost, n){
+  if (!Number.isFinite(n) || n < 0) return Infinity;
+  const N = Math.max(0, Math.ceil(n));
+  let sum = 0;
+  for (let i = 0; i < N; i++){
+    sum += rollCostAt(baseRollCost, i);
+  }
+  return sum;
+}
+
+function winChanceByNRolls(p, n){
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  const N = Math.max(0, Math.ceil(n));
+  return 1 - Math.pow(1 - p, N);
+}
+
+function rollsNeededForTarget(p, target){
+  if (target <= 0) return 0;
+  if (p <= 0) return Infinity;
+  if (p >= 1) return 1;
+
+  const t = Math.min(0.999999999999, Math.max(0, target));
+  const denom = Math.log(1 - p);
+  if (denom === 0) return 1;
+
+  const n = Math.log(1 - t) / denom;
+  if (!Number.isFinite(n)) return Infinity;
+  return Math.max(0, n);
+}
+
+function computeBestStrategy({ baseRollCost, baseProbabilityPct, baseUpgradeCost, boostAmountPct, targetChancePct }){
   const price = Math.max(1, baseUpgradeCost * 4);
   const cap = price * 3;
 
   if (baseProbabilityPct <= 0 && boostAmountPct <= 0){
     return { ok:false, error:"Chance is 0% and upgrades don’t increase chance. You can’t obtain the item." };
   }
+
+  const target = clampInt(targetChancePct, 0, 100) / 100;
 
   const maxK = 25;
   let best = null;
@@ -129,29 +167,48 @@ function computeBestStrategy({ baseRollCost, baseProbabilityPct, baseUpgradeCost
     const threshold = computeRollThreshold(displayed);
     const winProb = threshold / 100;
 
-    const expectedRollSpend = expectedRollSpendWithEscalation(baseRollCost, winProb);
-    const expectedTotal = spentUpgrades + expectedRollSpend;
+    const neededRollsRaw = rollsNeededForTarget(winProb, target);
+    const neededRolls = Number.isFinite(neededRollsRaw) ? Math.ceil(neededRollsRaw) : Infinity;
+
+    const rollSpendToTarget = Number.isFinite(neededRolls)
+      ? totalRollSpendForNRolls(baseRollCost, neededRolls)
+      : Infinity;
+
+    const totalToTarget = spentUpgrades + rollSpendToTarget;
 
     curve.xs.push(k);
-    curve.ys.push(Number.isFinite(expectedTotal) ? expectedTotal : null);
+    curve.ys.push(Number.isFinite(totalToTarget) ? totalToTarget : null);
+
+    const achievedChance = Number.isFinite(neededRolls)
+      ? winChanceByNRolls(winProb, neededRolls)
+      : 0;
+
+    const expectedRollSpend = expectedRollSpendWithEscalation(baseRollCost, winProb);
+    const expectedTotal = spentUpgrades + expectedRollSpend;
 
     const cand = {
       upgrades: k,
       displayedPct: displayed,
       threshold,
       actualWinPct: threshold,
+      targetChancePct: clampInt(targetChancePct, 0, 100),
+      rollsNeededRaw: neededRollsRaw,
+      rollsNeeded: neededRolls,
+      achievedChance,
+      rollSpendToTarget,
+      spentUpgrades,
+      totalToTarget,
       expectedRolls: winProb > 0 ? (1 / winProb) : Infinity,
       expectedRollSpend,
-      spentUpgrades,
       expectedTotal,
-      impliedUSD: scrapsToUSD(expectedTotal),
+      impliedUSD: scrapsToUSD(totalToTarget),
       price,
       cap
     };
 
     if (!best) best = cand;
-    else if (cand.expectedTotal < best.expectedTotal) best = cand;
-    else if (cand.expectedTotal === best.expectedTotal && cand.upgrades < best.upgrades) best = cand;
+    else if (cand.totalToTarget < best.totalToTarget) best = cand;
+    else if (cand.totalToTarget === best.totalToTarget && cand.upgrades < best.upgrades) best = cand;
   }
 
   if (!best) return { ok:false, error:"No valid strategy found." };
@@ -163,7 +220,7 @@ function computeBestStrategy({ baseRollCost, baseProbabilityPct, baseUpgradeCost
     { tier:"T4", rate:25 }
   ];
 
-  const hoursByTier = tierRates.map(t => ({ tier: t.tier, hours: best.expectedTotal / t.rate }));
+  const hoursByTier = tierRates.map(t => ({ tier: t.tier, hours: best.totalToTarget / t.rate }));
 
   const recommendation =
     best.upgrades === 0
@@ -171,10 +228,6 @@ function computeBestStrategy({ baseRollCost, baseProbabilityPct, baseUpgradeCost
       : `Best move: buy ${best.upgrades} upgrade${best.upgrades === 1 ? "" : "s"}, then roll.`;
 
   return { ok:true, ...best, hoursByTier, recommendation, curve };
-}
-
-function buildCurveData(res){
-  return res.curve;
 }
 
 function renderChart(curve, bestK){
@@ -211,7 +264,7 @@ function renderChart(curve, bestK){
             title: { display: true, text: "upgrades" },
             ticks: { stepSize: 1, precision: 0 }
           },
-          y: { title: { display: true, text: "expected scraps" } }
+          y: { title: { display: true, text: "scraps needed to hit target chance" } }
         }
       }
     });
@@ -230,15 +283,17 @@ function solveMain(){
   const baseChanceRaw = toNum($("baseChance").value);
   const upgradeCostRaw = toNum($("upgradeCost").value);
   const upgradeIncRaw = toNum($("upgradeInc").value);
+  const targetChanceRaw = toNum($("targetChance").value);
 
-  if (![rollCostRaw, baseChanceRaw, upgradeCostRaw, upgradeIncRaw].every(Number.isFinite)){
-    return { ok:false, error:"fill in all 4 inputs first." };
+  if (![rollCostRaw, baseChanceRaw, upgradeCostRaw, upgradeIncRaw, targetChanceRaw].every(Number.isFinite)){
+    return { ok:false, error:"fill in all 5 inputs first (including target chance)." };
   }
 
   const baseRollCost = Math.max(1, Math.trunc(rollCostRaw));
   const baseChance = clampInt(baseChanceRaw, 0, 100);
   const baseUpgradeCost = Math.max(1, Math.trunc(upgradeCostRaw));
   const boostAmount = Math.max(0, Math.trunc(upgradeIncRaw));
+  const targetChancePct = clampInt(targetChanceRaw, 0, 100);
 
   const baseChanceUsed = alreadyWon ? Math.floor(baseChance / 2) : baseChance;
 
@@ -246,7 +301,8 @@ function solveMain(){
     baseRollCost,
     baseProbabilityPct: baseChanceUsed,
     baseUpgradeCost,
-    boostAmountPct: boostAmount
+    boostAmountPct: boostAmount,
+    targetChancePct
   });
 
   if (!res.ok) return res;
@@ -272,17 +328,22 @@ function renderMain(res){
     </div>
   `).join("");
 
+  const rollsNeededRounded = Number.isFinite(res.rollsNeeded) ? res.rollsNeeded : Infinity;
+  const actualChancePct = (res.achievedChance * 100).toFixed(2);
+  const impliedUSDFromAvg = scrapsToUSD(res.expectedTotal);
+
   box.innerHTML = `
     <div class="big">${res.recommendation}</div>
     <div class="split">
       <div class="miniBox">
-        <div class="miniTitle">Odds + Expected Cost</div>
-        <div class="mono">chance per roll after upgrades: ${res.displayedPct}%</div>
-        <div class="mono" style="margin-top:6px">expected rolls: ${format2(res.expectedRolls)}</div>
-        <div class="mono" style="margin-top:6px">expected roll scraps (avg): ${format2(res.expectedRollSpend)}</div>
-        <div class="mono" style="margin-top:6px">upgrade scraps spent: ${format2(res.spentUpgrades)}</div>
-        <div class="mono" style="margin-top:6px">expected total scraps: ${format2(res.expectedTotal)}</div>
-        <div class="mono" style="margin-top:10px">Implied value(USD): $${format2(res.impliedUSD)} · upgrade cap: ${res.cap}</div>
+        <div class="miniTitle">Target-chance Strategy</div>
+        <div class="mono">target chance: ${res.targetChancePct}%</div>
+        <div class="mono" style="margin-top:6px">chance per roll after upgrades: ${res.displayedPct}%</div>
+        <div class="mono" style="margin-top:6px">rolls needed (rounded): ${rollsNeededRounded}</div>
+        <div class="mono" style="margin-top:6px">actual item chance (binomial distribution): ${actualChancePct}%</div>
+        <div class="mono" style="margin-top:6px">scraps used on rolls: ${format2(res.rollSpendToTarget)}</div>
+        <div class="mono" style="margin-top:6px">scraps used on upgrades: ${format2(res.spentUpgrades)}</div>
+        <div class="mono" style="margin-top:6px"><b>total scraps used:</b> ${format2(res.totalToTarget)}</div>
         ${penaltyNote}
       </div>
       <div class="miniBox">
@@ -290,13 +351,17 @@ function renderMain(res){
         <div class="tierList">${tierRows}</div>
       </div>
     </div>
+
+    <div style="margin-top:12px;border-top:1px dashed rgba(0,0,0,0.25);padding-top:10px">
+      <div class="mono" style="font-weight:950;margin-bottom:6px">Average view for da item:</div>
+      <div class="mono">expected rolls: ${format2(res.expectedRolls)}</div>
+      <div class="mono" style="margin-top:6px">expected roll scraps (avg): ${format2(res.expectedRollSpend)}</div>
+      <div class="mono" style="margin-top:6px">expected total scraps (avg): ${format2(res.expectedTotal)}</div>
+      <div class="mono" style="margin-top:6px">Implied value(USD): $${format2(impliedUSDFromAvg)}</div>
+    </div>
   `;
 
-  // <div class="mono" style="margin-top:6px">actual win chance (house edge): ${res.actualWinPct}%</div>
-  // ive been told not to leak uh congrats on finding this!
-
-  const curve = buildCurveData(res);
-  renderChart(curve, res.upgrades);
+  renderChart(res.curve, res.upgrades);
 }
 
 function setWarmStats(){
@@ -439,7 +504,7 @@ async function spinCase(){
   if (win){
     showModal({
       title: "CONGRATS",
-      body: `you obtained the item 🎉<br/><br/>
+      body: `you obtained the item yippie<br/><br/>
             rolls: <b>${warmRolls}</b><br/>
             scraps: <b>${warmScraps}</b><br/>
             landed: <b>${finalNumber}</b> (needed ≤ ${chance})`,
@@ -448,7 +513,7 @@ async function spinCase(){
   } else {
     showModal({
       title: "rip",
-      body: `nope 😭<br/>landed: <b>${finalNumber}</b> (needed ≤ ${chance})`,
+      body: `nope :p <br/>landed: <b>${finalNumber}</b> (needed ≤ ${chance})`,
       buttons: [{ label: "again", primary: true }]
     });
   }

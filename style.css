@@ -46,6 +46,7 @@ body{
   display:flex;
   gap:10px;
 }
+
 .postit{
   width: 180px;
   padding: 12px 12px;
@@ -119,6 +120,7 @@ h2{
   color: var(--muted);
   font-weight: 800;
 }
+
 .field input{
   width:100%;
   padding: 10px 10px;
@@ -128,6 +130,7 @@ h2{
   outline:none;
   font-size:14px;
 }
+
 .field input:focus{ box-shadow: 0 0 0 3px rgba(255,106,0,0.25); }
 
 .row{ display:flex; gap:10px; margin-top: 14px; flex-wrap: wrap; }
@@ -211,7 +214,17 @@ h2{
   border: 1px solid rgba(0,0,0,0.10);
 }
 
-.warmCard .warmHead{ display:grid; gap:10px; }
+.warmCard .warmHead{ 
+  text-align: center;
+  justify-items: center;
+  position: relative;
+  z-index: 5;
+}
+
+.warmCard .warmHead h2{
+  margin: 0;
+}
+
 .warmupArea{
   max-height: 0;
   overflow: hidden;
@@ -232,6 +245,7 @@ h2{
   flex-wrap:wrap;
   margin-bottom: 10px;
 }
+
 .scrapTag{
   display:inline-block;
   padding: 6px 10px;
@@ -240,6 +254,7 @@ h2{
   font-weight: 950;
   background:#fff;
 }
+
 .warmupNote{
   color: var(--muted);
   font-size: 12px;
@@ -288,13 +303,18 @@ h2{
   border-radius: 12px;
   overflow: hidden;
   background: #fafafa;
+  isolation: isolate;
 }
 
 .casePointer{
   position: absolute;
-  z-index: 9999;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  transform: translateX(-50%);
+  z-index: 999;
   pointer-events: none;
-  transform: translateX(-50%) translateZ(0);
 }
 
 .casePointer::before{
@@ -324,6 +344,8 @@ h2{
 }
 
 .caseStrip{
+  position: relative;
+  z-index: 1;
   display:flex;
   height: 100%;
   align-items:center;
@@ -331,8 +353,6 @@ h2{
   padding: 0 12px;
   transform: translateX(0px);
   will-change: transform;
-  position: relative;
-  z-index: 1;
 }
 
 .caseNum{
@@ -523,8 +543,6 @@ h2{
 }
 
 .hidden{ display:none !important; }
-
-
 
 @media (max-width: 900px){
   .postits{ position: static; margin-top: 10px; }
